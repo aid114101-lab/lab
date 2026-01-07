@@ -6,13 +6,18 @@
     <title>地理大富翁：會考衝刺版</title>
     <meta name="description" content="內建精選會考題庫與詳解的地理大富翁遊戲，隨時隨地都能玩！">
     
-    <!-- 網站圖示 -->
+    <!-- 網站圖示 (使用 Emoji) -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌏</text></svg>">
     
+    <!-- Open Graph -->
+    <meta property="og:title" content="地理大富翁：會考衝刺版">
+    <meta property="og:description" content="快來挑戰地理知識，成為探險王！內建詳細解析與豐富題庫。">
+    <meta property="og:type" content="website">
+
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Google Fonts -->
+    <!-- Google Fonts: Zen Maru Gothic -->
     <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap" rel="stylesheet">
     
     <!-- Chart.js -->
@@ -45,15 +50,18 @@
             background-size: 20px 20px;
             background-position: 0 0, 10px 10px;
         }
+        /* Chart Container Strict Styling */
         .chart-container {
             position: relative;
             width: 100%;
             max-width: 600px;
-            margin: 0 auto;
+            margin-left: auto;
+            margin-right: auto;
             height: 300px;
             max-height: 40vh;
         }
         
+        /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #FFF8F0; }
         ::-webkit-scrollbar-thumb { background: #FFB7B2; border-radius: 4px; }
@@ -99,8 +107,8 @@
             <section id="view-start" class="absolute inset-0 z-30 bg-jp-bg flex flex-col items-center justify-center p-6 overflow-y-auto">
                 <div class="bg-white p-8 rounded-3xl shadow-xl border-4 border-white w-full max-w-md text-center fade-in">
                     <div class="text-6xl mb-4 animate-bounce">🎲</div>
-                    <h2 class="text-2xl font-bold text-jp-text mb-2">地理知識大挑戰</h2>
-                    <p class="text-gray-500 mb-6 text-sm">累積資產，挑戰電腦，成為地理知識王！<br><span class="text-jp-rose font-bold">規則：遊戲結束時，錢最多的人獲勝。</span></p>
+                    <h2 class="text-2xl font-bold text-jp-text mb-2">準備好探險了嗎？</h2>
+                    <p class="text-gray-500 mb-6 text-sm">累積資產，挑戰電腦，成為地理知識王！</p>
 
                     <div class="text-left mb-2">
                         <label class="text-sm font-bold text-gray-600 ml-1">選擇對手數量</label>
@@ -192,6 +200,7 @@
         };
 
         // --- Data: Questions & Events ---
+        // 內建豐富題庫 (含詳解)
         const QUESTIONS = [
             { 
                 cat: "台灣氣候", 
@@ -512,33 +521,21 @@
                 }
             },
 
-            // 修正後的獲勝邏輯：抵達終點觸發結算，但看錢決定贏家
-            handleWin: (arrivingPlayer) => {
+            handleWin: (winner) => {
                 STATE.isGameOver = true;
                 let bonus = 0;
-                
-                // 到達終點獎勵 (Arriving Bonus)
-                if(!arrivingPlayer.isAI) {
-                    bonus = 500; // 提高獎勵，讓終點更有吸引力
-                    game.modifyMoney(arrivingPlayer, bonus);
-                    ui.log(`${arrivingPlayer.name} 抵達終點！獲得獎金 $${bonus}`);
-                } else {
-                     // AI 抵達
-                     game.modifyMoney(arrivingPlayer, 300); 
-                     ui.log(`${arrivingPlayer.name} 抵達終點！`);
+                if(!winner.isAI) {
+                    bonus = 300;
+                    game.modifyMoney(winner, 300);
                 }
                 
-                // 更新全局錢包
+                // Save to Global
                 const human = STATE.players.find(p => !p.isAI);
                 STATE.globalMoney += human.money;
                 Storage.save();
 
-                // 排序：錢最多的在前面
-                // 這裡複製一個陣列來排序，不影響原始回合順序（雖然遊戲已結束）
-                const sortedPlayers = [...STATE.players].sort((a,b) => b.money - a.money);
-                const realWinner = sortedPlayers[0]; // 第一名就是錢最多的人
-
-                ui.showWinModal(realWinner, bonus, arrivingPlayer, sortedPlayers);
+                STATE.players.sort((a,b) => b.money - a.money);
+                ui.showWinModal(winner, bonus);
             },
         };
 
@@ -634,6 +631,8 @@
             },
 
             showQuestionModal: (q) => {
+                // 將 q 物件的內容轉為 JSON 字串傳遞，方便在 onclick 中使用
+                // 注意：需要處理引號跳脫
                 const qJson = encodeURIComponent(JSON.stringify(q));
                 
                 const optsHtml = q.opts.map((opt, i) => `
@@ -666,14 +665,10 @@
                 `);
             },
 
-            showWinModal: (winner, bonus, arrivingPlayer, sortedPlayers) => {
-                let listHtml = sortedPlayers.map((p, i) => `
+            showWinModal: (winner, bonus) => {
+                let listHtml = STATE.players.map((p, i) => `
                     <div class="flex justify-between items-center p-3 border-b border-gray-100 ${i===0 ? 'bg-yellow-50' : ''}">
-                        <div class="flex items-center gap-2">
-                             <span class="text-xl w-6 text-center">${i===0 ? '🥇' : (i===1 ? '🥈' : '🥉')}</span>
-                             <span class="font-bold ${p.id === winner.id ? 'text-red-500' : 'text-gray-600'}">${p.name}</span>
-                             ${p.id === arrivingPlayer.id ? '<span class="text-[10px] bg-blue-100 text-blue-600 px-1 py-0.5 rounded ml-1">抵達終點</span>' : ''}
-                        </div>
+                        <span class="font-bold ${i===0 ? 'text-red-500' : 'text-gray-600'}">${i===0 ? '👑' : ''} ${p.name}</span>
                         <span class="font-bold text-amber-500">$${p.money}</span>
                     </div>
                 `).join('');
@@ -681,10 +676,11 @@
                 ui.openModal(`
                     <div class="bg-yellow-400 p-4 text-white font-bold text-center">🏆 探險結束</div>
                     <div class="p-6 text-center">
-                        <p class="text-gray-600 mb-1 text-sm">資產最高者獲勝</p>
+                        <p class="text-gray-600 mb-1">恭喜獲勝者</p>
                         <h2 class="text-3xl font-bold text-jp-text mb-4">${winner.name}</h2>
+                        ${bonus > 0 ? `<div class="bg-green-100 text-green-600 text-sm py-1 px-3 rounded-full inline-block mb-4">獲得終點獎金 +$${bonus}</div>` : ''}
                         
-                        <div class="bg-gray-50 rounded-xl p-4 mb-4 text-left max-h-48 overflow-y-auto">
+                        <div class="bg-gray-50 rounded-xl p-4 mb-4 text-left">
                             ${listHtml}
                         </div>
                         <div class="bg-orange-50 p-3 rounded-lg text-sm text-orange-600 mb-4">
